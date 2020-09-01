@@ -1,0 +1,41 @@
+- hosts: localhost
+  connection: local
+
+  vars:
+    run_nagios_server: true
+    # run_nagios_client: true
+    nagios_users:
+        - user: nagiosadmin
+          pass: pwslab_admin
+
+  tasks:
+
+    -   name: Check the version of release
+        command: hostnamectl
+        register: os_check
+        ignore_errors: yes
+
+    -   name: Fetch Nagios Role
+        git:
+          repo: https://github.com/sdarwin/Ansible-Nagios.git
+          dest: /root/.ansible/roles/pwslab.nagios
+        #   version: master
+          force: yes
+
+    -   name: Disable SELinux
+        selinux:
+            state: disabled
+        when:
+            - os_check.stdout | regex_search("CentOS") 
+
+    -   name: Applying replacement 
+        lineinfile:
+            dest: /root/.ansible/roles/pwslab.nagios/tasks/configs.yml
+            regexp: '^(.*)when: not nagios_cfg_dir_enabled(.*)$'
+            line: '  when: nagios_cfg_dir_enabled'
+            state: present
+
+    -   name: Installing Nagios
+        include_role:
+            name: pwslab.nagios
+
